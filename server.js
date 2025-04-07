@@ -1,28 +1,44 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const { exec } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 const app = express();
 const port = 3000;
 
 app.use(bodyParser.json());
 
+// Optional: Allow CORS for local development
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  next();
+});
+
 app.post('/packRepo', (req, res) => {
   const { repoUrl, options } = req.body;
-  // Build the command string. For example, using --remote and --compress.
   let cmd = `npx repomix --remote ${repoUrl}`;
   if (options && options.compress) {
     cmd += ' --compress';
   }
   
   console.log(`Executing command: ${cmd}`);
-  // Increase maxBuffer if your repository is large.
   exec(cmd, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
     if (error) {
       console.error(`Error executing repomix: ${error}`);
-      res.status(500).json({ error: error.message, stderr });
+      return res.status(500).json({ error: error.message, stderr });
     } else {
-      // Assuming repomix outputs the packed content to stdout.
-      res.json({ output: stdout });
+      // Assume the output file is always "repomix-output.xml" in the current working directory.
+      const outputFilePath = path.resolve(process.cwd(), 'repomix-output.xml');
+      console.log(`Reading output file from: ${outputFilePath}`);
+      fs.readFile(outputFilePath, 'utf8', (err, data) => {
+        if (err) {
+          console.error(`Error reading output file: ${err}`);
+          return res.status(500).json({ error: "Error reading output file: " + err.toString() });
+        } else {
+          return res.json({ output: data });
+        }
+      });
     }
   });
 });
