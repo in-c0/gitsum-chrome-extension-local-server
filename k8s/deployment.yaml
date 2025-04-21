@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitsum-api
+  labels:
+    app: gitsum-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: gitsum-api
+  template:
+    metadata:
+      labels:
+        app: gitsum-api
+    spec:
+      containers:
+      - name: gitsum-api
+        image: your-registry.com/gitsum-api:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "3000"
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: gitsum-secrets
+              key: mongodb-uri
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: gitsum-secrets
+              key: jwt-secret
+        - name: STRIPE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: gitsum-secrets
+              key: stripe-secret-key
+        - name: STRIPE_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: gitsum-secrets
+              key: stripe-webhook-secret
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: gitsum-secrets
+              key: openai-api-key
+        resources:
+          limits:
+            cpu: "1"
+            memory: "512Mi"
+          requests:
+            cpu: "0.5"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
